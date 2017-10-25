@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
+from scipy.special import logsumexp
 
 class model():
     def __init__(self, data):
@@ -15,17 +16,9 @@ class model():
         print 'lambda.shape',self.lmbda.shape
         self.is_trained = False
         
-            
-    def compute_feature(self, label_idx, word_id, doc, label):
-        feature_value = 0.0
-        if (label_idx == label) and (word_id in doc.cp_ids_counts):
-            feature_value = 1.0 * doc.cp_ids_counts[word_id] / doc.length
-        else:
-            feature_value = 0.0        
-        return feature_value
-                
+                            
     def compute_contidional_prob(self, label_idx, doc, lmbda):
-        p = 0.0
+        _p = 0.0
         _numerator = self.compute_sum_features(doc, label_idx, lmbda)
         _numerator = np.exp(_numerator)
         
@@ -33,18 +26,18 @@ class model():
         for label_ in self.labels:
             temp = self.compute_sum_features(doc, label_, lmbda)
             _demoninator += np.exp(temp)
-        p = _numerator / _demoninator
-        return p
+        _p = _numerator / _demoninator
+        return _p
 
     def compute_sum_features(self, doc, label_idx, lmbda):
         '''
         compute sum_i lambda[i]* f_i (doc, label_idx)
         '''
-        sum = 0.0
+        _sum = 0.0
         word_ids = doc.cp_ids_counts.keys()
         for word_id in word_ids:
-            sum += 1.0 * lmbda[label_idx * self.V_count + word_id] * doc.cp_ids_counts[word_id] / doc.length
-        return sum
+            _sum += 1.0 * lmbda[label_idx * self.V_count + word_id] * doc.cp_ids_counts[word_id] / doc.length
+        return _sum
     
     def compute_log_li_grad(self, lmbda):
         print 'Computing log li and grad'
@@ -57,12 +50,11 @@ class model():
             doc_log_li = 0.0
             ep_1 = self.compute_sum_features(doc, doc.human_label, lmbda)
             
-            ep_2 = 0.0           
+            temp = np.zeros(self.label_count)           
             for label_idx in self.labels:
-                temp = self.compute_sum_features(doc, label_idx, lmbda)                
-                ep_2 += np.exp(temp)    
+                temp[label_idx] = self.compute_sum_features(doc, label_idx, lmbda)                
             
-            doc_log_li = ep_1 - np.log(ep_2)
+            doc_log_li = ep_1 - logsumexp(temp)
             log_li += doc_log_li
             
             ###### Update feature_idx with word_id in docs ##########
