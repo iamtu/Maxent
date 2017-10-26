@@ -4,7 +4,8 @@ from document import document
 import copy
 '''
 Read file data with line format:
-sentence , label
+sentence_1,label
+sentence_2,label
 '''
 class data():
     def __init__(self, filename):
@@ -45,17 +46,3 @@ class data():
         self.train = copy.deepcopy(total_docs[0: 4*SIZE/5])
         self.test = copy.deepcopy(total_docs[4*SIZE/5 : ])
         del total_docs
-
-if __name__ == '__main__':
-    print 'reading file'
-    data = data('./data/electronics.csv')
-    print 'data.labels', data.labels
-    print 'train data'
-    for doc in data.train:
-        print doc
-    print 'test data'
-    for doc in data.test:
-        print doc
-                
-        
-        

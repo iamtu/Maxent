@@ -5,34 +5,35 @@ from scipy.special import logsumexp
 class model():
     def __init__(self, data):
         self.data = data
-        self.label_count = len(self.data.labels)
-        self.labels = self.data.labels
-        self.V_count = len(self.data.cp_map)
-        self.V = self.data.cp_map.values()
         
+        self.labels = self.data.labels # C set [0,1,2...]
+        self.label_count = len(self.labels)
+        
+        self.V = self.data.cp_map.values()  # V set [0,1,2....V-1] 
+        self.V_count = len(self.V)
+        
+        # Model parameters
         self.lmbda = np.zeros( self.label_count* self.V_count)
-        print 'number of context predicates: ', self.V_count
-        print 'labels', self.labels
-        print 'lambda.shape',self.lmbda.shape
-        self.is_trained = False
 
     def softmax(self,x):
-        """Compute softmax values for each sets of scores in x."""
+        '''
+        input x:ndarray
+        output e^x /sum(e^x) (trick to avoid overflow)
+        '''
         e_x = np.exp(x - np.max(x))
         return e_x / e_x.sum()
 
-                            
+    # REMOVEME                            
     def compute_contidional_prob(self, label_idx, doc, lmbda):
-        _p = 0.0
-        _numerator = self.compute_sum_features(doc, label_idx, lmbda)
-        _numerator = np.exp(_numerator)
-        
-        _demoninator = 0.0
+        '''
+        compute P(c|d) = exp(sum_i lambda_i * f_i(c,d)) / sum_c exp(sum_i lambda_i * f_i(c,d))
+                                    i = (w,c) for w \in V, c \in C
+        '''
+        temp = np.zeros(self.label_count)
         for label_ in self.labels:
-            temp = self.compute_sum_features(doc, label_, lmbda)
-            _demoninator += np.exp(temp)
-        _p = _numerator / _demoninator
-        return _p
+            temp[label_] = self.compute_sum_features(doc, label_, lmbda)
+        temp = self.softmax(temp)
+        return temp[label_idx]
 
     def compute_sum_features(self, doc, label_idx, lmbda):
         '''
@@ -44,11 +45,18 @@ class model():
             _sum += 1.0 * lmbda[label_idx * self.V_count + word_id] * doc.cp_ids_counts[word_id] / doc.length
         return _sum
     
-    def compute_log_li_grad(self, lmbda):
-        print 'Computing log li and grad'
-#         log_li = -1.0/200 * np.sum(lmbda**2)
-#         grad = -1.0/100 * lmbda
-        
+    def compute_log_li_grad(self, lmbda):        
+        '''
+        compute log_li and its gradient
+        log_li = sum_d (log P(c(d)|d) with c(d) is human label of document d
+        grad_i = grad(lambda_i) = sum_d ( f_i(c(d),d) + (sum_c f_i(c,d)*exp(sum_i lambda_i * f_i(c,d))) / (sum_c exp(sum_i lambda_i * f_i(c,d))) )
+        NOTE: 
+            *) log_li is computed directly follow the above formular
+            *) grad:
+                for each document:
+                    update grad_i accumulating in this document
+        '''
+
         log_li = 0.0
         grad = np.zeros(lmbda.shape)
 
@@ -71,39 +79,40 @@ class model():
                 feature_idx = doc.human_label * self.V_count + word_id
                 grad[feature_idx] += 1.0 * doc.cp_ids_counts[word_id] / doc.length
             
+            #NOTE - This is the same in computing doc_log_li, but remained here for clear
             temp = np.zeros(self.label_count)                
             for label_idx in self.labels:
                 temp[label_idx] = self.compute_sum_features(doc, label_idx, lmbda)
-        
-            temp = self.softmax(temp)
-            
-#             sum_exp_temp = np.sum(np.exp(temp))
+            temp = self.softmax(temp)            
             
             for word_id in word_ids:
                 for label_idx in self.labels:
                     feature_idx = label_idx * self.V_count + word_id
                     grad[feature_idx] -= 1.0 * doc.cp_ids_counts[word_id] / doc.length * temp[label_idx]
             
-        return -log_li, np.negative(grad)
-
-    #########################################################
-    
-        
+        return -log_li, np.negative(grad) #negate it because fmin_l_bfgs_b is minimization function
+            
     def train(self):
+        '''
+        Using fmin_l_bfgs_b to maxmimum log likelihood
+        NOTE: fmin_l_bfgs_b returns 3 values
+        '''
         self.lmbda, log_li, dic = fmin_l_bfgs_b(self.compute_log_li_grad, self.lmbda, iprint = 99)
-        self.is_trained = True
-        print 'trained. lambda = ', self.lmbda
     
+    def doc_inference(self, doc):
+        '''
+            return c_star = argmax_c P(c|d)
+        '''
+        temp = np.zeros(self.label_count)
+        for label_ in self.labels:
+            temp[label_] = self.compute_sum_features(doc, label_, self.lmbda)
+        temp = self.softmax(temp)
+        return np.argmax(temp)
+
+        
     def inference(self):
-        if not self.is_trained:
-            print "please train me to get lambda first"
-            return
         for doc in self.data.test:
-            c_star = self.labels[0]
-            for label_idx in self.labels:
-                if self.compute_contidional_prob(label_idx, doc, self.lmbda) > self.compute_contidional_prob(c_star, doc, self.lmbda):
-                    c_star = label_idx
-            doc.model_label = c_star
+            doc.model_label = self.doc_inference(doc)
     
     def validate(self):
         num_doc_tests = len(self.data.test)
