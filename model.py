@@ -133,6 +133,9 @@ class model():
         for doc in self.data.test:
             if doc.human_label == doc.model_label:
                 pre_class_count[doc.human_label] += 1
+        print 'Class \t Number of doctest \tNumber of doc predict correctly'
+        for label_idx in self.labels:
+            print label_idx, '\t', total_doc_in_class[label_idx], '\t', pre_class_count[label_idx]
         
         model_labels = [doc.model_label for doc in self.data.test]
         human_labels = [doc.human_label for doc in self.data.test]
