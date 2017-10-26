@@ -4,7 +4,11 @@ Imput Data format: (last chacracter is label)
 line 1: 'sentence,label'
 line 2: 'sentence,label'
 
-run: python pre_process_data.py [datafile] [n_gram]
-	to create [datafile.n_gram.txt] in data folder
+*)run: python pre_process_data.py [datafile] [n_gram]
+	to create [datafile.n_gram.txt]
 
-run: python run.py [path to input file]
+example: python pre_process_data.py ./Data/electronics 2
+
+*)run: python run.py [path to input file]
+
+example: python run.py ./Data/electronics_2gram.txt
