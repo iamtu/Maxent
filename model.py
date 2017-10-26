@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 from scipy.special import logsumexp
+from sklearn.metrics import precision_recall_fscore_support as score
 
 class model():
     def __init__(self, data):
@@ -13,6 +14,7 @@ class model():
         self.V_count = len(self.V)
         
         # Model parameters
+        # lambda shape = matrix CxV
         self.lmbda = np.zeros( self.label_count* self.V_count)
 
     def softmax(self,x):
@@ -34,7 +36,13 @@ class model():
             temp[label_] = self.compute_sum_features(doc, label_, lmbda)
         temp = self.softmax(temp)
         return temp[label_idx]
-
+    
+    def compute_doc_feature(self, doc, word_id):
+        '''
+        compute f_i(c,d) = f_(w,c') (c,d) = N(w,d)/N(d) if c == c' or 0 if c!= c'
+        '''
+        return 1.0 * doc.cp_ids_counts[word_id] / doc.length
+    
     def compute_sum_features(self, doc, label_idx, lmbda):
         '''
         compute sum_i lambda[i]* f_i (doc, label_idx)
@@ -42,7 +50,7 @@ class model():
         _sum = 0.0
         word_ids = doc.cp_ids_counts.keys()
         for word_id in word_ids:
-            _sum += 1.0 * lmbda[label_idx * self.V_count + word_id] * doc.cp_ids_counts[word_id] / doc.length
+            _sum += lmbda[label_idx*self.V_count + word_id] * self.compute_doc_feature(doc, word_id)
         return _sum
     
     def compute_log_li_grad(self, lmbda):        
@@ -77,7 +85,7 @@ class model():
             # update feature idx with d.humanlabel
             for word_id in word_ids:
                 feature_idx = doc.human_label * self.V_count + word_id
-                grad[feature_idx] += 1.0 * doc.cp_ids_counts[word_id] / doc.length
+                grad[feature_idx] += self.compute_doc_feature(doc, word_id)
             
             #NOTE - This is the same in computing doc_log_li, but remained here for clear
             temp = np.zeros(self.label_count)                
@@ -88,7 +96,7 @@ class model():
             for word_id in word_ids:
                 for label_idx in self.labels:
                     feature_idx = label_idx * self.V_count + word_id
-                    grad[feature_idx] -= 1.0 * doc.cp_ids_counts[word_id] / doc.length * temp[label_idx]
+                    grad[feature_idx] -= self.compute_doc_feature(doc, word_id) * temp[label_idx]
             
         return -log_li, np.negative(grad) #negate it because fmin_l_bfgs_b is minimization function
             
@@ -99,7 +107,7 @@ class model():
         '''
         self.lmbda, log_li, dic = fmin_l_bfgs_b(self.compute_log_li_grad, self.lmbda, iprint = 99)
     
-    def doc_inference(self, doc):
+    def inference_doc(self, doc):
         '''
             return c_star = argmax_c P(c|d)
         '''
@@ -112,17 +120,27 @@ class model():
         
     def inference(self):
         for doc in self.data.test:
-            doc.model_label = self.doc_inference(doc)
+            doc.model_label = self.inference_doc(doc)
     
     def validate(self):
         num_doc_tests = len(self.data.test)
         print 'number of doc test', num_doc_tests
-        pre = 0
+        total_doc_in_class = np.zeros(self.label_count)
+        for doc in self.data.test:
+            total_doc_in_class[doc.human_label] += 1
+        
+        pre_class_count = np.zeros(self.label_count)
         for doc in self.data.test:
             if doc.human_label == doc.model_label:
-                pre += 1
+                pre_class_count[doc.human_label] += 1
         
-        pre = 100.0 * pre / num_doc_tests
-        print 'precision = %0.2f (%%)'%pre
-        return pre
+        model_labels = [doc.model_label for doc in self.data.test]
+        human_labels = [doc.human_label for doc in self.data.test]
+        
+        precision, recall, fscore, support = score(human_labels, model_labels)
+
+        print('precision: {}'.format(precision))
+        print('recall: {}'.format(recall))
+        print('fscore: {}'.format(fscore))
+        print('support: {}'.format(support))
             
