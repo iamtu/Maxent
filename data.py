@@ -12,8 +12,9 @@ class data():
         self.train = [] # list of documents
         self.test = []
         self.cp_map = {} # self.cp_map['context_predicate_str'] = context_predicate_id
-        self.labels = []
+        self.LABELS = [0,1]
         
+        print 'Begin reading document from file %s' %filename
         total_docs = []
         with open(filename, "r") as ins:
             for line in ins:
@@ -24,9 +25,9 @@ class data():
                 label_str = label_str.strip('\t\n ')
 
                 label_id = int(label_str)
-                if label_id not in self.labels:
-                    self.labels.append(label_id)
-                                    
+                if label_id not in self.LABELS:
+                    print 'ERROR in input file. balel_id %d not found in LABELS%s'%(label_id, self.LABELS)
+                    exit(1)
                 tokens = sentence.split()
                 for token in tokens:
                     token_id = self.cp_map.get(token)
@@ -46,3 +47,4 @@ class data():
         self.train = copy.deepcopy(total_docs[0: 4*SIZE/5])
         self.test = copy.deepcopy(total_docs[4*SIZE/5 : ])
         del total_docs
+        print 'Finished read input file'

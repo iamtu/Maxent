@@ -1,0 +1,103 @@
+vuvantu@elite:~/workspace/MaxEnt_Suggestion$ python run.py ./Data/electronics_2_gram.txt 
+Begin reading document from file ./Data/electronics_2_gram.txt
+Finished read input file
+Training max_ent with LBFGS algorithm. Change iprint = 99 to more logs
+number of doc test 757
+Class 	 Number of doctest 	Numdocs correctly 	 Percentage
+0 	711.0 	689.0 	96.905766526
+1 	46.0 	29.0 	63.0434782609
+
+total precision 94.8480845443
+
+
+Using scikit learn utilities
+prec, recall [ 0.06076618  0.56862745  1.        ] [ 1.          0.63043478  0.        ]
+auc =  0.61075965048
+precision: [ 0.97592068  0.56862745]
+recall: [ 0.96905767  0.63043478]
+fscore: [ 0.97247706  0.59793814]
+support: [711  46]
+vuvantu@elite:~/workspace/MaxEnt_Suggestion$ python run.py ./Data/hotel_2_gram.txt 
+Begin reading document from file ./Data/hotel_2_gram.txt
+Finished read input file
+Training max_ent with LBFGS algorithm. Change iprint = 99 to more logs
+Inference test docs
+Calculating results...
+number of doc test 1507
+Class 	 Number of doctest 	Numdocs correctly 	 Percentage
+0 	1444.0 	1388.0 	96.1218836565
+1 	63.0 	32.0 	50.7936507937
+
+total precision 94.2269409423
+
+
+Using scikit learn utilities
+prec, recall [ 0.04180491  0.36363636  1.        ] [ 1.          0.50793651  0.        ]
+auc =  0.446071770889
+precision: [ 0.97815363  0.36363636]
+recall: [ 0.96121884  0.50793651]
+fscore: [ 0.96961229  0.42384106]
+support: [1444   63]
+vuvantu@elite:~/workspace/MaxEnt_Suggestion$ python run.py ./Data/SuggHashtagTweets_2_gram.txt 
+Begin reading document from file ./Data/SuggHashtagTweets_2_gram.txt
+Finished read input file
+Training max_ent with LBFGS algorithm. Change iprint = 99 to more logs
+Inference test docs
+Calculating results...
+number of doc test 820
+Class 	 Number of doctest 	Numdocs correctly 	 Percentage
+0 	796.0 	789.0 	99.1206030151
+1 	24.0 	2.0 	8.33333333333
+
+total precision 96.4634146341
+
+
+Using scikit learn utilities
+prec, recall [ 0.02926829  0.22222222  1.        ] [ 1.          0.08333333  0.        ]
+auc =  0.166192411924
+precision: [ 0.972873    0.22222222]
+recall: [ 0.99120603  0.08333333]
+fscore: [ 0.98195395  0.12121212]
+support: [796  24]
+vuvantu@elite:~/workspace/MaxEnt_Suggestion$ python run.py ./Data/suggForum_uservoice_2_gram.txt 
+Begin reading document from file ./Data/suggForum_uservoice_2_gram.txt
+Finished read input file
+Training max_ent with LBFGS algorithm. Change iprint = 99 to more logs
+Inference test docs
+Calculating results...
+number of doc test 1157
+Class 	 Number of doctest 	Numdocs correctly 	 Percentage
+0 	815.0 	696.0 	85.3987730061
+1 	342.0 	212.0 	61.9883040936
+
+total precision 78.4788245462
+
+
+Using scikit learn utilities
+prec, recall [ 0.29559205  0.64048338  1.        ] [ 1.          0.61988304  0.        ]
+auc =  0.686362987592
+precision: [ 0.84261501  0.64048338]
+recall: [ 0.85398773  0.61988304]
+fscore: [ 0.84826325  0.63001486]
+support: [815 342]
+vuvantu@elite:~/workspace/MaxEnt_Suggestion$ python run.py ./Data/TravelAdviceRetagged_2_gram.txt 
+Begin reading document from file ./Data/TravelAdviceRetagged_2_gram.txt
+Finished read input file
+Training max_ent with LBFGS algorithm. Change iprint = 99 to more logs
+Inference test docs
+Calculating results...
+number of doc test 1037
+Class 	 Number of doctest 	Numdocs correctly 	 Percentage
+0 	564.0 	517.0 	91.6666666667
+1 	473.0 	135.0 	28.5412262156
+
+total precision 62.8736740598
+
+
+Using scikit learn utilities
+prec, recall [ 0.45612343  0.74175824  1.        ] [ 1.          0.28541226  0.        ]
+auc =  0.676555358033
+precision: [ 0.60467836  0.74175824]
+recall: [ 0.91666667  0.28541226]
+fscore: [ 0.72868217  0.41221374]
+support: [564 473]

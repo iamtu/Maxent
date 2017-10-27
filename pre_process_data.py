@@ -13,18 +13,34 @@ if __name__ == '__main__':
     if n_gram not in [1,2,3] :
         print 'please Choose n_gram is 1,2 or 3'
         exit(1)
-    output_file = filename + "_" + str(n_gram) + 'gram.txt'
+    output_file = filename + "_" + str(n_gram) + '_gram.txt'
     fout = open(output_file, 'w')
     
     STOP_WORDS = set(stopwords.words('english'))
+    LEGAL_LABELS = [0,1]
     
+    line_count = 0
     with open(filename, "r") as ins:
         for line in ins:
-            [sentence, label_str] = line.strip('\n\t ').split(',')
-            label_str = label_str.strip('\t\n ')
+            line_count += 1
+            if len(line) < 3:
+                continue
+            line = line.strip()
+            if not line[-1:].isdigit():
+                continue
+            if int(line[-1:]) not in LEGAL_LABELS:
+                continue
+            [sentence, label_str] = line.split(',')
+            label_str = label_str.strip()
+            sentence = sentence.decode('utf-8').lower()
             sentence = re.sub(r'[^\w\s]','',sentence) # remove punctuation
             word_tokens = word_tokenize(sentence) # tokenize sentence
 #             word_tokens = [w for w in word_tokens if not w in STOP_WORDS]
+            
+            for w in word_tokens:
+                w = filter(lambda i: i.isalpha(), w)
+            
+            word_tokens = [w for w in word_tokens if len(w) > 0 ]
             for w in word_tokens:
                 w = ps.stem(w)
             
@@ -47,6 +63,8 @@ if __name__ == '__main__':
             output_string += ',' + label_str + '\n'
             fout.write(output_string)
     fout.close()
+    
+    print "Finish. Please check %s "%output_file
             
 
 

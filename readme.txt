@@ -4,6 +4,8 @@ Imput Data format: (last chacracter is label)
 line 1: 'sentence,label'
 line 2: 'sentence,label'
 
+label is integer 0,1,2...
+
 *)run: python pre_process_data.py [datafile] [n_gram]
 	to create [datafile.n_gram.txt]
 

@@ -1,13 +1,13 @@
 import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 from scipy.special import logsumexp
-from sklearn.metrics import precision_recall_fscore_support as score
+from sklearn.metrics import precision_recall_fscore_support, precision_recall_curve, auc 
 
 class model():
     def __init__(self, data):
         self.data = data
         
-        self.labels = self.data.labels # C set [0,1,2...]
+        self.labels = self.data.LABELS # C set [0,1]
         self.label_count = len(self.labels)
         
         self.V = self.data.cp_map.values()  # V set [0,1,2....V-1] 
@@ -105,7 +105,8 @@ class model():
         Using fmin_l_bfgs_b to maxmimum log likelihood
         NOTE: fmin_l_bfgs_b returns 3 values
         '''
-        self.lmbda, log_li, dic = fmin_l_bfgs_b(self.compute_log_li_grad, self.lmbda, iprint = 99)
+        print "Training max_ent with LBFGS algorithm. Change iprint = 99 to more logs"
+        self.lmbda, log_li, dic = fmin_l_bfgs_b(self.compute_log_li_grad, self.lmbda, iprint = 0)
     
     def inference_doc(self, doc):
         '''
@@ -119,10 +120,12 @@ class model():
 
         
     def inference(self):
+        print "Inference test docs"
         for doc in self.data.test:
             doc.model_label = self.inference_doc(doc)
     
     def validate(self):
+        print 'Calculating results...'
         num_doc_tests = len(self.data.test)
         print 'number of doc test', num_doc_tests
         total_doc_in_class = np.zeros(self.label_count)
@@ -133,17 +136,26 @@ class model():
         for doc in self.data.test:
             if doc.human_label == doc.model_label:
                 pre_class_count[doc.human_label] += 1
-        print 'Class \t Number of doctest \tNumber of doc predict correctly'
+        print 'Class \t Number of doctest \tNumdocs correctly \t Percentage'
         for label_idx in self.labels:
-            print label_idx, '\t', total_doc_in_class[label_idx], '\t', pre_class_count[label_idx]
+            print label_idx, '\t', total_doc_in_class[label_idx], '\t', pre_class_count[label_idx], '\t', 100.0 * pre_class_count[label_idx]/ total_doc_in_class[label_idx]
+        print '\ntotal precision', 100.0* sum(pre_class_count) / sum(total_doc_in_class)
         
+        
+        print '\n\nUsing scikit learn utilities'
         model_labels = [doc.model_label for doc in self.data.test]
         human_labels = [doc.human_label for doc in self.data.test]
         
-        precision, recall, fscore, support = score(human_labels, model_labels)
+        prec, recall, _ = precision_recall_curve(human_labels, model_labels)
+        auc_metric = auc(recall, prec)
+        print 'prec, recall', prec, recall
+        print 'AUC = ', auc_metric
 
-        print('precision: {}'.format(precision))
-        print('recall: {}'.format(recall))
-        print('fscore: {}'.format(fscore))
+        'print other precision recall calculation'
+        precision, recall, fscore, support = precision_recall_fscore_support(human_labels, model_labels)
+
+        print'PRECISION: {}'.format(precision), 'AVERAGE', np.mean(precision)
+        print'RECALL: {}'.format(recall), 'AVERAGE', np.mean(recall)
+        print 'FSCORE: {}'.format(fscore), 'AVERAGE', np.mean(fscore)
         print('support: {}'.format(support))
             
