@@ -5,18 +5,44 @@ from sklearn.metrics import precision_recall_fscore_support, precision_recall_cu
 
 class model():
     def __init__(self, data):
+        self.cue = [] #contain word_str s
+        self.DUBPLICATE_CUE = 1
+        self.MAX_CUE_EACH_CLASS = 50
+        
         self.data = data
         
         self.labels = self.data.LABELS # C set [0,1]
         self.label_count = len(self.labels)
         
-        self.V = self.data.cp_map.values()  # V set [0,1,2....V-1] 
+        self.V = self.data.cp_str_2_int.values()  # V set [0,1,2....V-1] 
         self.V_count = len(self.V)
         
         # Model parameters
         # lambda shape = matrix CxV
-        self.lmbda = np.zeros( self.label_count* self.V_count)
+        self.lmbda = np.zeros( self.label_count* self.V_count)            
+            
+    def change_domain(self, data):
+        print 'Change to domain', data.domain
+        self.data = data
+        # update cue into train_data
+        cue_ids = []
+        for cue_str in self.cue:
+            cue_id = self.data.cp_str_2_int.get(cue_str)
+            if cue_id != None:
+                cue_ids.append(cue_id)
+        
+        for doc in self.data.train:
+            for cue_id in cue_ids:
+                if cue_id in doc.cp_ids_counts.keys():
+                    doc.cp_ids_counts[cue_id] += self.DUBPLICATE_CUE
+            doc.length = sum(doc.cp_ids_counts.values())
+        
+        # update self.V, self.V, self.lmbda s.t new data
+        self.V = self.data.cp_str_2_int.values()  # V set [0,1,2....V-1] 
+        self.V_count = len(self.V)
+        self.lmbda = np.zeros( self.label_count* self.V_count)            
 
+        
     def softmax(self,x):
         '''
         input x:ndarray
@@ -105,9 +131,30 @@ class model():
         Using fmin_l_bfgs_b to maxmimum log likelihood
         NOTE: fmin_l_bfgs_b returns 3 values
         '''
-        print "Training max_ent with LBFGS algorithm. Change iprint = 99 to more logs"
+        print "\nTraining max_ent with LBFGS algorithm. Change iprint = 99 to more logs"
         self.lmbda, log_li, dic = fmin_l_bfgs_b(self.compute_log_li_grad, self.lmbda, iprint = 0)
+        self.update_cue()
     
+    def update_cue(self):
+        cue_ids = []
+        for label_idx in self.labels:
+            lmbda_label_idx = self.lmbda[label_idx * self.V_count: label_idx * self.V_count + self.V_count]
+            temp = np.argpartition(-lmbda_label_idx, self.MAX_CUE_EACH_CLASS)
+            max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
+            for idx in max_idxes:    
+                cue_ids.append(idx)
+        
+        cue_strs = []
+        for cue_id in cue_ids:
+            cue_str = self.data.cp_int_2_str.get(cue_id)
+            if cue_str == None:
+                print "ERROR: cue str not found in data.dictionary"
+                exit(1)
+            cue_strs.append(cue_str)     
+                    
+        for cue_str in cue_strs:
+            if cue_str not in self.cue:
+                self.cue.append(cue_str)        
     def inference_doc(self, doc):
         '''
             return c_star = argmax_c P(c|d)
@@ -120,42 +167,43 @@ class model():
 
         
     def inference(self):
-        print "Inference test docs"
+#         print "Inference test docs"
         for doc in self.data.test:
             doc.model_label = self.inference_doc(doc)
     
     def validate(self):
-        print 'Calculating results...'
-        num_doc_tests = len(self.data.test)
-        print 'number of doc test', num_doc_tests
-        total_doc_in_class = np.zeros(self.label_count)
-        for doc in self.data.test:
-            total_doc_in_class[doc.human_label] += 1
+#         print 'Calculating results...'
+#         num_doc_tests = len(self.data.test)
+#         print 'number of doc test', num_doc_tests
+#         total_doc_in_class = np.zeros(self.label_count)
+#         for doc in self.data.test:
+#             total_doc_in_class[doc.human_label] += 1
+#         
+#         pre_class_count = np.zeros(self.label_count)
+#         for doc in self.data.test:
+#             if doc.human_label == doc.model_label:
+#                 pre_class_count[doc.human_label] += 1
+#         print 'Class \t Number of doctest \tNumdocs correctly \t Percentage'
+#         for label_idx in self.labels:
+#             print label_idx, '\t', total_doc_in_class[label_idx], '\t', pre_class_count[label_idx], '\t', 100.0 * pre_class_count[label_idx]/ total_doc_in_class[label_idx]
+#         print '\ntotal precision', 100.0* sum(pre_class_count) / sum(total_doc_in_class)
         
-        pre_class_count = np.zeros(self.label_count)
-        for doc in self.data.test:
-            if doc.human_label == doc.model_label:
-                pre_class_count[doc.human_label] += 1
-        print 'Class \t Number of doctest \tNumdocs correctly \t Percentage'
-        for label_idx in self.labels:
-            print label_idx, '\t', total_doc_in_class[label_idx], '\t', pre_class_count[label_idx], '\t', 100.0 * pre_class_count[label_idx]/ total_doc_in_class[label_idx]
-        print '\ntotal precision', 100.0* sum(pre_class_count) / sum(total_doc_in_class)
         
-        
-        print '\n\nUsing scikit learn utilities'
+        print 'Result in domain: ', self.data.domain
         model_labels = [doc.model_label for doc in self.data.test]
         human_labels = [doc.human_label for doc in self.data.test]
         
         prec, recall, _ = precision_recall_curve(human_labels, model_labels)
         auc_metric = auc(recall, prec)
-        print 'prec, recall', prec, recall
-        print 'AUC = ', auc_metric
-
-        'print other precision recall calculation'
+#         print 'prec, recall', prec, recall
+        print 'AUC: ', auc_metric
         precision, recall, fscore, support = precision_recall_fscore_support(human_labels, model_labels)
-
-        print'PRECISION: {}'.format(precision), 'AVERAGE', np.mean(precision)
-        print'RECALL: {}'.format(recall), 'AVERAGE', np.mean(recall)
-        print 'FSCORE: {}'.format(fscore), 'AVERAGE', np.mean(fscore)
-        print('support: {}'.format(support))
-            
+        print'PRECISION: ', np.mean(precision)
+        print'RECALL: ', np.mean(recall)
+        print 'FSCORE: ', np.mean(fscore), "\n"
+# 
+#         print'PRECISION: {}'.format(precision), 'AVERAGE', np.mean(precision)
+#         print'RECALL: {}'.format(recall), 'AVERAGE', np.mean(recall)
+#         print 'FSCORE: {}'.format(fscore), 'AVERAGE', np.mean(fscore)
+#         print('support: {}'.format(support))
+#             

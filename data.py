@@ -9,9 +9,12 @@ sentence_2,label
 '''
 class data():
     def __init__(self, filename):
+        self.domain = filename
         self.train = [] # list of documents
         self.test = []
-        self.cp_map = {} # self.cp_map['context_predicate_str'] = context_predicate_id
+        self.cp_str_2_int = {} # self.cp_str_2_int['context_predicate_str'] = context_predicate_id
+        self.cp_int_2_str = {}
+
         self.LABELS = [0,1]
         
         print 'Begin reading document from file %s' %filename
@@ -29,11 +32,12 @@ class data():
                     print 'ERROR in input file. balel_id %d not found in LABELS%s'%(label_id, self.LABELS)
                     exit(1)
                 tokens = sentence.split()
-                for token in tokens:
-                    token_id = self.cp_map.get(token)
+                for token_str in tokens:
+                    token_id = self.cp_str_2_int.get(token_str)
                     if token_id == None: # not in context_predicate_map string - id
-                        token_id = len(self.cp_map)
-                        self.cp_map[token] = token_id
+                        token_id = len(self.cp_str_2_int)
+                        self.cp_str_2_int[token_str] = token_id
+                        self.cp_int_2_str[token_id] = token_str
                         
                     if token_id not in doc: # check if in doc or not
                         doc[token_id] = 1
