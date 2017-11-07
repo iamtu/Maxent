@@ -5,18 +5,19 @@ from model import model
 from data import data
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print 'USAGE: python lifelong.py [TIMERUN]'
-        exit(1)
+#     if len(sys.argv) != 2:
+#         print 'USAGE: python lifelong.py [TIMERUN]'
+#         exit(1)
         
-    TIME_RUN = int(sys.argv[1])
+    TIME_RUN = 0
     print 'time run', TIME_RUN
     
-    data_domain_1 = data('electronics', TIME_RUN)
-    data_domain_2 = data('hotel',TIME_RUN)
+    data_domain_5 = data('electronics', TIME_RUN)
+    data_domain_4 = data('hotel',TIME_RUN)
     data_domain_3 = data('suggForum',TIME_RUN)
-    data_domain_4 = data('SuggHashtagTweets',TIME_RUN)
-    data_domain_5 = data('TravelAdviceRetagged',TIME_RUN)
+    data_domain_2 = data('SuggHashtagTweets',TIME_RUN)
+    data_domain_1 = data('TravelAdviceRetagged',TIME_RUN)
+    
     
     is_lifelong = True
 

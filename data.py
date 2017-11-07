@@ -14,7 +14,7 @@ DOMAINS = ['electronics', 'hotel', 'suggForum', 'SuggHashtagTweets', 'TravelAdvi
 class data():
         
     def __init__(self, domain, fold):
-        if fold not in [1,2,3,4,5]:
+        if fold not in [0, 1,2,3,4,5]:
             print "ERROR with fold name ", fold
             exit(1)
     

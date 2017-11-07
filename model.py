@@ -8,7 +8,7 @@ class model():
         self.IS_LIFELONG = is_lifelong
         
         self.cue = [] #contain word_str s
-        self.DUBPLICATE_CUE = 1
+        self.DUBPLICATE_CUE = 3
         self.MAX_CUE_EACH_CLASS = 50
         
         self.data = data
