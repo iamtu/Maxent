@@ -10,7 +10,7 @@ sentence_2,label
 '''
 class data():
     def __init__(self, filename):
-        self.domain = filename
+        self.domain = filename.split('/')[-1].split('_')[0]
         self.train = [] # list of documents
         self.test = []
         self.cp_str_2_int = {} # self.cp_str_2_int['context_predicate_str'] = context_predicate_id
@@ -22,6 +22,7 @@ class data():
         total_docs = []
         with open(filename, "r") as ins:
             for line in ins:
+                origin_line_str = line
                 # for each document
                 doc = {}
                 [sentence, label_str] = line.strip('\n\t ').split(',')
@@ -45,7 +46,7 @@ class data():
                     else :
                         doc[token_id] += 1
                 
-                aDoc = document(doc, label_id)
+                aDoc = document(doc, label_id, origin_line_str)
                 total_docs.append(aDoc)
         
         shuffle(total_docs)

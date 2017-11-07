@@ -1,10 +1,10 @@
 class document():
-    def __init__(self, cp_ids_counts_map, human_label):
+    def __init__(self, cp_ids_counts_map, human_label, doc_str):
         self.cp_ids_counts = cp_ids_counts_map # dictionary {context_predicate_id -- count}
         self.human_label = human_label
         self.length = sum(self.cp_ids_counts.values()) 
         self.model_label = -1
-    
+        self.origin_str = doc_str
     def __str__(self):
         _str = 'Document:\n\t Ids-Counts:'
         for cp_id in self.cp_ids_counts:

@@ -2,9 +2,11 @@ import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 from scipy.special import logsumexp
 from sklearn.metrics import precision_recall_fscore_support, precision_recall_curve, auc 
+import os
 
 class model():
-    def __init__(self, data):
+    def __init__(self, data, time_run):
+        self.TIME_RUN = time_run
         self.cue = [] #contain word_str s
         self.DUBPLICATE_CUE = 1
         self.MAX_CUE_EACH_CLASS = 50
@@ -185,3 +187,47 @@ class model():
         print'PRECISION: ', np.mean(precision)
         print'RECALL: ', np.mean(recall)
         print 'FSCORE: ', np.mean(fscore), "\n"
+        
+    def save_model(self):
+        print 'saving model...'
+        # create folder to save RUN_TIME
+        directory = './Data/lifelong/timerun' + str(self.TIME_RUN)
+        if not os.path.isdir(directory):
+            print 'creating directory', directory
+            os.makedirs(directory)
+        sub_dir = directory + '/' + self.data.domain
+        if not os.path.exists(sub_dir):
+            os.makedirs(sub_dir)
+        # train_data
+        train_file = sub_dir + '/train.txt'
+        fout = open(train_file, 'w')
+        for doc in self.data.train:
+            fout.write(doc.origin_str)
+        fout.close()
+        # test_data
+        test_file = sub_dir + '/test.txt'
+        fout = open(test_file, 'w')
+        for doc in self.data.test:
+            fout.write(doc.origin_str)
+        fout.close()
+        # V
+        vocab_file = sub_dir + '/vocab.txt'
+        fout = open(vocab_file, 'w')
+        for cp_str in self.data.cp_str_2_int.keys():
+            cp_id = self.data.cp_str_2_int.get(cp_str)
+            fout.write(str(cp_id) + " " + cp_str + '\n')
+        fout.close()
+        # Labels
+        labels_file = sub_dir + '/labels.txt'
+        fout = open(labels_file, 'w')
+        for label_idx in self.data.LABELS:
+            fout.write(str(label_idx) + '\n')
+        fout.close()
+        # lambda
+        lambda_file = sub_dir + '/lambda.txt'
+        fout = open(lambda_file, 'w')
+        for label_idx in self.data.LABELS:
+            for w in xrange(self.V_count):
+                fout.write(str(self.lmbda[label_idx * self.V_count + w]) + ' ')
+            fout.write('\n')
+        fout.close()
