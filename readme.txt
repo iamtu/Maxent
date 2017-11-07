@@ -8,6 +8,8 @@ label is integer 0,1,2...
 
 *)run: python pre_process_data.py [datafile] [n_gram]
 	to create [datafile.n_gram.txt]
+*)run: python split_data.py [filename]
+	to shuffle and split data into FOLDS for each runtime
 
 example: python pre_process_data.py ./Data/electronics 2
 

@@ -8,38 +8,76 @@ Read file data with line format:
 sentence_1,label
 sentence_2,label
 '''
+DOMAINS = ['electronics', 'hotel', 'suggForum', 'SuggHashtagTweets', 'TravelAdviceRetagged']
+
+
 class data():
-    def __init__(self, filename):
-        self.domain = filename.split('/')[-1].split('_')[0]
+        
+    def __init__(self, domain, fold):
+        if fold not in [1,2,3,4,5]:
+            print "ERROR with fold name ", fold
+            exit(1)
+    
+        if domain not in DOMAINS:
+            print "ERROR with domain name ,not found in DB", domain
+            exit(1)
+    
+        self.domain = domain
+        self.fold = str(fold)
         self.train = [] # list of documents
         self.test = []
+        
+        # load vocab
         self.cp_str_2_int = {} # self.cp_str_2_int['context_predicate_str'] = context_predicate_id
         self.cp_int_2_str = {}
-
         self.LABELS = [0,1]
         
-        print 'Begin reading document from file %s' %filename
-        total_docs = []
+        print 'reading vocab, train and test file...'
+        
+        vocab_filename = './Data/FOLDS/TIMERUN' + str(fold) + '/' + self.domain +'/vocab.txt'
+        with open(vocab_filename, 'r') as ins:
+            for line in ins:
+                if len(line) < 1:
+                    continue
+                [cp_str, cp_id] = line.rstrip().split(' ')
+                cp_id = int(cp_id)
+                self.cp_str_2_int[cp_str] = cp_id
+                self.cp_int_2_str[cp_id] = cp_str
+
+        
+        train_filename = './Data/FOLDS/TIMERUN' + str(fold) + '/' + self.domain + '/train.txt'
+        self.train = self.load_docs_from_file(train_filename)
+        
+        test_filename = './Data/FOLDS/TIMERUN' + str(fold) + '/' + self.domain + '/test.txt'
+        self.test = self.load_docs_from_file(test_filename)
+
+        print 'Finished read input file'
+        
+    def load_docs_from_file(self, filename):
+        docs = []
         with open(filename, "r") as ins:
             for line in ins:
+                if len(line) < 1:
+                    continue
+                
                 origin_line_str = line
                 # for each document
                 doc = {}
                 [sentence, label_str] = line.strip('\n\t ').split(',')
                 sentence = sentence.strip('\t\n ')
+                
                 label_str = label_str.strip('\t\n ')
-
                 label_id = int(label_str)
                 if label_id not in self.LABELS:
                     print 'ERROR in input file. balel_id %d not found in LABELS%s'%(label_id, self.LABELS)
                     exit(1)
+                    
                 tokens = sentence.split()
                 for token_str in tokens:
                     token_id = self.cp_str_2_int.get(token_str)
-                    if token_id == None: # not in context_predicate_map string - id
-                        token_id = len(self.cp_str_2_int)
-                        self.cp_str_2_int[token_str] = token_id
-                        self.cp_int_2_str[token_id] = token_str
+                    if token_id == None: 
+                        print "ERROR when split data. token_id %d not found in dictionary" %token_id
+                        
                         
                     if token_id not in doc: # check if in doc or not
                         doc[token_id] = 1
@@ -47,11 +85,5 @@ class data():
                         doc[token_id] += 1
                 
                 aDoc = document(doc, label_id, origin_line_str)
-                total_docs.append(aDoc)
-        
-        shuffle(total_docs)
-        SIZE = len(total_docs)
-        self.train = copy.deepcopy(total_docs[0: 4*SIZE/5])
-        self.test = copy.deepcopy(total_docs[4*SIZE/5 : ])
-        del total_docs
-        print 'Finished read input file'
+                docs.append(aDoc)
+        return docs
