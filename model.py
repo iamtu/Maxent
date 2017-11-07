@@ -172,23 +172,7 @@ class model():
             doc.model_label = self.inference_doc(doc)
     
     def validate(self):
-#         print 'Calculating results...'
-#         num_doc_tests = len(self.data.test)
-#         print 'number of doc test', num_doc_tests
-#         total_doc_in_class = np.zeros(self.label_count)
-#         for doc in self.data.test:
-#             total_doc_in_class[doc.human_label] += 1
-#         
-#         pre_class_count = np.zeros(self.label_count)
-#         for doc in self.data.test:
-#             if doc.human_label == doc.model_label:
-#                 pre_class_count[doc.human_label] += 1
-#         print 'Class \t Number of doctest \tNumdocs correctly \t Percentage'
-#         for label_idx in self.labels:
-#             print label_idx, '\t', total_doc_in_class[label_idx], '\t', pre_class_count[label_idx], '\t', 100.0 * pre_class_count[label_idx]/ total_doc_in_class[label_idx]
-#         print '\ntotal precision', 100.0* sum(pre_class_count) / sum(total_doc_in_class)
-        
-        
+                
         print 'Result in domain: ', self.data.domain
         model_labels = [doc.model_label for doc in self.data.test]
         human_labels = [doc.human_label for doc in self.data.test]
@@ -201,9 +185,3 @@ class model():
         print'PRECISION: ', np.mean(precision)
         print'RECALL: ', np.mean(recall)
         print 'FSCORE: ', np.mean(fscore), "\n"
-# 
-#         print'PRECISION: {}'.format(precision), 'AVERAGE', np.mean(precision)
-#         print'RECALL: {}'.format(recall), 'AVERAGE', np.mean(recall)
-#         print 'FSCORE: {}'.format(fscore), 'AVERAGE', np.mean(fscore)
-#         print('support: {}'.format(support))
-#             

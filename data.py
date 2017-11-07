@@ -2,6 +2,7 @@ import os,sys
 sys.path.append(os.getcwd())
 from document import document
 import copy
+from random import shuffle
 '''
 Read file data with line format:
 sentence_1,label
@@ -47,6 +48,7 @@ class data():
                 aDoc = document(doc, label_id)
                 total_docs.append(aDoc)
         
+        shuffle(total_docs)
         SIZE = len(total_docs)
         self.train = copy.deepcopy(total_docs[0: 4*SIZE/5])
         self.test = copy.deepcopy(total_docs[4*SIZE/5 : ])
