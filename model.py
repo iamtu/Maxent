@@ -5,11 +5,11 @@ from sklearn.metrics import precision_recall_fscore_support, precision_recall_cu
 from document import document
 
 class model():
-    def __init__(self, data, is_lifelong):
+    def __init__(self, data, is_lifelong, alpha):
         self.IS_LIFELONG = is_lifelong
         
         self.cue = [] #contain word_str s
-        self.DUBPLICATE_CUE = 3
+        self.DUBPLICATE_CUE = alpha
         self.MAX_CUE_EACH_CLASS = 50
         
         self.data = data
@@ -172,14 +172,13 @@ class model():
             self.update_cue()
     
     def update_cue(self):
-        print 'Updating cue...'
+        print 'Updating cue...\n'
         cue_ids = []
-        for label_idx in self.labels:
-            lmbda_label_idx = self.lmbda[label_idx * self.V_count: label_idx * self.V_count + self.V_count]
-            temp = np.argpartition(-lmbda_label_idx, self.MAX_CUE_EACH_CLASS)
-            max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
-            for idx in max_idxes:    
-                cue_ids.append(idx)
+        lmbda_pos_idx = self.lmbda[1 * self.V_count: 1 * self.V_count + self.V_count]
+        temp = np.argpartition(-lmbda_pos_idx, self.MAX_CUE_EACH_CLASS)
+        max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
+        for idx in max_idxes:    
+            cue_ids.append(idx)
         
         cue_strs = []
         for cue_id in cue_ids:
@@ -212,17 +211,25 @@ class model():
     def validate(self):
                 
         print 'Result in train domain : ', self.data.train_domain, '/ test domain: ', self.data.test_domain
+        total_test_count = len(self.data.test)
+        neg_count = 0
+        for doc in self.data.test:
+            if doc.human_label == 0:
+                neg_count += 1
+        print '#doc tests: ', total_test_count, '\t# neg_docs: ', neg_count, '\t#pos_docs', total_test_count-neg_count        
+        
         model_labels = [doc.model_label for doc in self.data.test]
         human_labels = [doc.human_label for doc in self.data.test]
         
         prec, recall, _ = precision_recall_curve(human_labels, model_labels)
         auc_metric = auc(recall, prec)
-#         print 'prec, recall', prec, recall
         print 'AUC: ', auc_metric
         precision, recall, fscore, support = precision_recall_fscore_support(human_labels, model_labels)
-        print'PRECISION: ', np.mean(precision)
-        print'RECALL: ', np.mean(recall)
-        print 'FSCORE: ', np.mean(fscore), "\n"
+        
+        print 'PRECISION: {}'.format(precision), '\tmean', np.mean(precision)
+        print 'RECALL: {}'.format(recall), '\tmean', np.mean(recall)
+        print 'FSCORE: {}'.format(fscore), '\tmean', np.mean(fscore), "\n"
+        print 'SUPPORT: {}'.format(support)
         
     def save_model(self):
         print 'saving model...'
@@ -244,6 +251,6 @@ class model():
             fout.write(str(cp_id) + " " + cp_str + '\n')
         fout.close()
         
-        print 'saved model in ./Data/FOLDS/TIMERUN' + self.data.fold 
+        print 'saved model in ./Data/FOLDS/TIMERUN' + self.data.fold  + '\n'
 
         
