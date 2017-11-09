@@ -178,7 +178,7 @@ class model():
     
     def validate(self):
                 
-        print 'Result in domain: ', self.data.domain
+        print 'Result in train domain : ', self.data.train_domain, '/ test domain: ', self.data.test_domain
         model_labels = [doc.model_label for doc in self.data.test]
         human_labels = [doc.human_label for doc in self.data.test]
         
