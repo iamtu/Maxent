@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 from scipy.special import logsumexp
 from sklearn.metrics import precision_recall_fscore_support, precision_recall_curve, auc 
+from document import document
 
 class model():
     def __init__(self, data, is_lifelong):
@@ -23,21 +24,52 @@ class model():
         # lambda shape = matrix CxV
         self.lmbda = np.zeros( self.label_count* self.V_count)            
             
-    def change_domain(self, data):
-        print 'Change to domain', data.domain
-        self.data = data
-        # update cue for train_data
+    def change_domain(self, new_data):
+        print 'Change to new train domain', new_data.train_domain
+        
+        # update cue for new train_data
         cue_ids = []
         for cue_str in self.cue:
-            cue_id = self.data.cp_str_2_int.get(cue_str)
+            cue_id = new_data.cp_str_2_int.get(cue_str)
             if cue_id != None:
                 cue_ids.append(cue_id)
         
-        for doc in self.data.train:
+        for doc in new_data.train:
             for cue_id in cue_ids:
                 if cue_id in doc.cp_ids_counts.keys():
                     doc.cp_ids_counts[cue_id] += self.DUBPLICATE_CUE
             doc.length = sum(doc.cp_ids_counts.values())
+        
+        # update test doc with new dictionary in train domain
+        new_test_doc_presenations = []
+        for doc in new_data.test:
+            line = doc.origin_str
+            cp_id_counts = {}
+            [sentence, label_str] = line.strip('\n\t ').split(',')
+            sentence = sentence.strip('\t\n ')
+                
+            label_str = label_str.strip('\t\n ')
+            label_id = int(label_str)
+            if label_id not in new_data.LABELS:
+                print 'ERROR in input file. balel_id %d not found in LABELS%s'%(label_id, new_data.LABELS)
+                exit(1)
+                
+            tokens = sentence.split()
+            for token_str in tokens:
+                token_id = new_data.cp_str_2_int.get(token_str)
+                if token_id == None: # not in context_predicate_map string - id
+                    continue
+                if token_id not in cp_id_counts: # check if in doc or not
+                    cp_id_counts[token_id] = 1
+                else :
+                    cp_id_counts[token_id] += 1
+            
+            aDoc = document(cp_id_counts, label_id, doc.origin_str)
+            new_test_doc_presenations.append(aDoc)
+            
+        new_data.test = new_test_doc_presenations
+        
+        self.data = new_data
         
         # update self.V, self.V, self.lmbda s.t new data
         self.V = self.data.cp_str_2_int.values()  # V set [0,1,2....V-1] 
@@ -159,7 +191,8 @@ class model():
                     
         for cue_str in cue_strs:
             if cue_str not in self.cue:
-                self.cue.append(cue_str)        
+                self.cue.append(cue_str)
+                        
     def inference_doc(self, doc):
         '''
             return c_star = argmax_c P(c|d)
@@ -191,46 +224,26 @@ class model():
         print'RECALL: ', np.mean(recall)
         print 'FSCORE: ', np.mean(fscore), "\n"
         
-#     def save_model(self):
-#         print 'saving model...'
-#         # create folder to save RUN_TIME
-#         directory = './Data/lifelong/timerun' + str(self.TIME_RUN)
-#         if not os.path.isdir(directory):
-#             print 'creating directory', directory
-#             os.makedirs(directory)
-#         sub_dir = directory + '/' + self.data.domain
-#         if not os.path.exists(sub_dir):
-#             os.makedirs(sub_dir)
-#         # train_data
-#         train_file = sub_dir + '/train.txt'
-#         fout = open(train_file, 'w')
-#         for doc in self.data.train:
-#             fout.write(doc.origin_str)
-#         fout.close()
-#         # test_data
-#         test_file = sub_dir + '/test.txt'
-#         fout = open(test_file, 'w')
-#         for doc in self.data.test:
-#             fout.write(doc.origin_str)
-#         fout.close()
-#         # V
-#         vocab_file = sub_dir + '/vocab.txt'
-#         fout = open(vocab_file, 'w')
-#         for cp_str in self.data.cp_str_2_int.keys():
-#             cp_id = self.data.cp_str_2_int.get(cp_str)
-#             fout.write(str(cp_id) + " " + cp_str + '\n')
-#         fout.close()
-#         # Labels
-#         labels_file = sub_dir + '/labels.txt'
-#         fout = open(labels_file, 'w')
-#         for label_idx in self.data.LABELS:
-#             fout.write(str(label_idx) + '\n')
-#         fout.close()
-#         # lambda
-#         lambda_file = sub_dir + '/lambda.txt'
-#         fout = open(lambda_file, 'w')
-#         for label_idx in self.data.LABELS:
-#             for w in xrange(self.V_count):
-#                 fout.write(str(self.lmbda[label_idx * self.V_count + w]) + ' ')
-#             fout.write('\n')
-#         fout.close()
+    def save_model(self):
+        print 'saving model...'
+        
+        # lambda
+        lambda_file = './Data/FOLDS/TIMERUN' + self.data.fold + '/' + self.data.train_domain + '_lambda.txt'
+        fout = open(lambda_file, 'w')
+        for label_idx in self.data.LABELS:
+            for w in xrange(self.V_count):
+                fout.write(str(self.lmbda[label_idx * self.V_count + w]) + ' ')
+            fout.write('\n')
+        fout.close()
+        
+        # vocab for lambda
+        vocab_file = './Data/FOLDS/TIMERUN' + self.data.fold + '/' + self.data.train_domain + '_vocab.txt'
+        fout = open(vocab_file, 'w')
+        for cp_str in self.data.cp_str_2_int.keys():
+            cp_id = self.data.cp_str_2_int.get(cp_str)
+            fout.write(str(cp_id) + " " + cp_str + '\n')
+        fout.close()
+        
+        print 'saved model in ./Data/FOLDS/TIMERUN' + self.data.fold 
+
+        

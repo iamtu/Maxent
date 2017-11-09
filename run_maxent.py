@@ -26,4 +26,5 @@ if __name__ == '__main__':
     max_ent.train()
     max_ent.inference()
     max_ent.validate()
+    max_ent.save_model()
     
