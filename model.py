@@ -25,7 +25,79 @@ class model():
         self.lmbda = np.zeros( self.label_count* self.V_count)            
             
     def change_domain(self, new_data):
+        
         print 'Change to new train domain', new_data.train_domain
+        # add old data to new data
+        # recalculate cp_str_2_int, V
+        # represent doc with new dictionary
+        
+        new_train_docs = []
+        new_cp_str_2_int = {}
+        new_cp_int_2_str = {}
+        
+        #FIXME - duplicate code
+        past_pos_docs = self.data.get_positive_train_docs()
+        for line in past_pos_docs:
+            origin_doc_str = line       
+            doc = {}
+            [sentence, label_str] = line.strip('\n\t ').split(',')
+            sentence = sentence.strip('\t\n ')
+                
+            label_str = label_str.strip('\t\n ')
+            label_id = int(label_str)
+            if label_id != 1:
+                print 'ERROR. label_id %d must be 1. it is pos. Check data.get_pos_doc method'%(label_id)
+                exit(1)
+                
+            tokens = sentence.split()
+            for token_str in tokens:
+                token_id = new_cp_str_2_int.get(token_str)
+                if token_id == None: # not in context_predicate_map string - id
+                    token_id = len(new_cp_str_2_int)
+                    new_cp_str_2_int[token_str] = token_id
+                    new_cp_int_2_str[token_id] = token_str
+                    
+                if token_id not in doc: # check if in doc or not
+                    doc[token_id] = 1
+                else :
+                    doc[token_id] += 1
+                
+            aDoc = document(doc, label_id, origin_doc_str)
+            new_train_docs.append(aDoc)
+        
+        for new_doc in new_data.train:
+            origin_doc_str = new_doc.origin_str
+            line = new_doc.origin_str       
+            doc = {}
+            [sentence, label_str] = line.strip('\n\t ').split(',')
+            sentence = sentence.strip('\t\n ')
+                
+            label_str = label_str.strip('\t\n ')
+            label_id = int(label_str)
+            if label_id not in self.labels:
+                print 'ERROR. label_id not found'
+                exit(1)
+                
+            tokens = sentence.split()
+            for token_str in tokens:
+                token_id = new_cp_str_2_int.get(token_str)
+                if token_id == None: # not in context_predicate_map string - id
+                    token_id = len(new_cp_str_2_int)
+                    new_cp_str_2_int[token_str] = token_id
+                    new_cp_int_2_str[token_id] = token_str
+                    
+                if token_id not in doc: # check if in doc or not
+                    doc[token_id] = 1
+                else :
+                    doc[token_id] += 1
+                
+            aDoc = document(doc, label_id, origin_doc_str)
+            new_train_docs.append(aDoc)
+        
+        new_data.train = new_train_docs
+        new_data.cp_str_2_int = new_cp_str_2_int
+        new_data.cp_int_2_str = new_cp_int_2_str
+        
         
         # update cue for new train_data
         cue_ids = []
@@ -39,8 +111,9 @@ class model():
                 if cue_id in doc.cp_ids_counts.keys():
                     doc.cp_ids_counts[cue_id] += self.DUBPLICATE_CUE
             doc.length = sum(doc.cp_ids_counts.values())
+
         
-        # update test doc with new dictionary in train domain
+        # ---------update test doc with new dictionary in train domain
         new_test_doc_presenations = []
         for doc in new_data.test:
             line = doc.origin_str
@@ -174,11 +247,23 @@ class model():
     def update_cue(self):
         print 'Updating cue...\n'
         cue_ids = []
-        lmbda_pos_idx = self.lmbda[1 * self.V_count: 1 * self.V_count + self.V_count]
-        temp = np.argpartition(-lmbda_pos_idx, self.MAX_CUE_EACH_CLASS)
-        max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
-        for idx in max_idxes:    
-            cue_ids.append(idx)
+        
+        # cue for only positive 
+#         lmbda_pos_idx = self.lmbda[1 * self.V_count: 1 * self.V_count + self.V_count]
+#         temp = np.argpartition(-lmbda_pos_idx, self.MAX_CUE_EACH_CLASS)
+#         max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
+#         for idx in max_idxes:    
+#             cue_ids.append(idx)
+#         
+
+        for label_idx in self.labels:
+            lmbda_label_idx = self.lmbda[label_idx * self.V_count: label_idx * self.V_count + self.V_count]
+            temp = np.argpartition(-lmbda_label_idx, self.MAX_CUE_EACH_CLASS)
+            max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
+            for idx in max_idxes:    
+                cue_ids.append(idx)
+
+        
         
         cue_strs = []
         for cue_id in cue_ids:
@@ -204,7 +289,6 @@ class model():
 
         
     def inference(self):
-#         print "Inference test docs"
         for doc in self.data.test:
             doc.model_label = self.inference_doc(doc)
     
@@ -228,8 +312,8 @@ class model():
         
         print 'PRECISION: {}'.format(precision), '\tmean', np.mean(precision)
         print 'RECALL: {}'.format(recall), '\tmean', np.mean(recall)
-        print 'FSCORE: {}'.format(fscore), '\tmean', np.mean(fscore), "\n"
-        print 'SUPPORT: {}'.format(support)
+        print 'FSCORE: {}'.format(fscore), '\tmean', np.mean(fscore)
+        print 'SUPPORT: {}'.format(support), '\n'
         
     def save_model(self):
         print 'saving model...'

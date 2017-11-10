@@ -103,8 +103,13 @@ class data():
                 aDoc = document(doc, label_id, origin_line_str)
                 self.test.append(aDoc)
          
-         
-         
-         
         print 'Finished read input file'
 
+    def get_positive_train_docs(self):
+        pos_docs = []
+        for doc in self.train:
+            if doc.human_label == 1:
+                pos_docs.append(doc.origin_str)
+        return pos_docs
+                
+                

@@ -13,6 +13,5 @@ label is integer 0,1,2...
 
 example: python pre_process_data.py ./Data/electronics 2
 
-*)run: python run.py [path to input file]
-
-example: python run.py ./Data/electronics_2gram.txt
+*) python max_ent.py train_domain test_domain
+*) python lifelong.py train_domain test_domain
