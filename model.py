@@ -239,7 +239,7 @@ class model():
         NOTE: fmin_l_bfgs_b returns 3 values
         '''
         print "Training max_ent with LBFGS algorithm. Change iprint = 99 to more logs..."
-        self.lmbda, log_li, dic = fmin_l_bfgs_b(self.compute_log_li_grad, self.lmbda, iprint = 0)
+        self.lmbda, log_li, dic = fmin_l_bfgs_b(self.compute_log_li_grad, self.lmbda, iprint = 0, callback = self.compute_test)
     
         if self.IS_LIFELONG == True:
             self.update_cue()
@@ -249,19 +249,19 @@ class model():
         cue_ids = []
         
         # cue for only positive 
-#         lmbda_pos_idx = self.lmbda[1 * self.V_count: 1 * self.V_count + self.V_count]
-#         temp = np.argpartition(-lmbda_pos_idx, self.MAX_CUE_EACH_CLASS)
-#         max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
-#         for idx in max_idxes:    
-#             cue_ids.append(idx)
-#         
-
-        for label_idx in self.labels:
-            lmbda_label_idx = self.lmbda[label_idx * self.V_count: label_idx * self.V_count + self.V_count]
-            temp = np.argpartition(-lmbda_label_idx, self.MAX_CUE_EACH_CLASS)
-            max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
-            for idx in max_idxes:    
-                cue_ids.append(idx)
+        lmbda_pos_idx = self.lmbda[1 * self.V_count: 1 * self.V_count + self.V_count]
+        temp = np.argpartition(-lmbda_pos_idx, self.MAX_CUE_EACH_CLASS)
+        max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
+        for idx in max_idxes:    
+            cue_ids.append(idx)
+         
+        # cue for both classes
+#         for label_idx in self.labels:
+#             lmbda_label_idx = self.lmbda[label_idx * self.V_count: label_idx * self.V_count + self.V_count]
+#             temp = np.argpartition(-lmbda_label_idx, self.MAX_CUE_EACH_CLASS)
+#             max_idxes = temp[:self.MAX_CUE_EACH_CLASS]
+#             for idx in max_idxes:    
+#                 cue_ids.append(idx)
 
         
         

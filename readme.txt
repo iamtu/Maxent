@@ -13,5 +13,5 @@ label is integer 0,1,2...
 
 example: python pre_process_data.py ./Data/electronics 2
 
-*) python max_ent.py train_domain test_domain
-*) python lifelong.py train_domain test_domain
+*) python max_ent.py alpha train_domain test_domain
+*) python lifelong.py alpha train_domain test_domain
