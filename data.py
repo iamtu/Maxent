@@ -11,20 +11,8 @@ DOMAINS = ['electronics', 'hotel', 'suggForum', 'SuggHashtagTweets', 'TravelAdvi
 
 class data():
         
-    def __init__(self, train_domain, test_domain, fold):
-        if fold not in [0, 1,2,3,4,5]:
-            print "ERROR with fold name ", fold
-            exit(1)
-    
-        if train_domain not in DOMAINS:
-            print "ERROR with train_domain name ,not found in DB", train_domain
-            exit(1)
+    def __init__(self, train_domain, test_domain):
         
-        if test_domain not in DOMAINS:
-            print "ERROR with train_domain name ,not found in DB", test_domain
-            exit(1)
-
-    
         self.train_domain = train_domain
         self.test_domain = test_domain
         

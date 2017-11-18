@@ -2,28 +2,113 @@ import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 from scipy.special import logsumexp
 from sklearn.metrics import precision_recall_fscore_support, precision_recall_curve, auc 
+import sys, os 
+sys.path.append(os.getcwd())
 from document import document
+import copy
 
-class model():
-    def __init__(self, data, is_lifelong, alpha):
-        self.IS_LIFELONG = is_lifelong
+class maxent_model():
+    def __init__(self, train_file, test_file, is_lifelong, alpha):
         
+        self.train_file = train_file
+        self.test_file = test_file
+        
+        self.IS_LIFELONG = is_lifelong
         self.cue = [] #contain word_str s
         self.DUBPLICATE_CUE = alpha
         self.MAX_CUE_EACH_CLASS = 50
         
-        self.data = data
+        # update me from data
+        self.train_docs = []
+        self.test_docs = []
+        self.cp_str_2_int = {} # self.cp_str_2_int['context_predicate_str'] = context_predicate_id in train data
+        self.cp_int_2_str = {}
         
-        self.labels = self.data.LABELS # C set [0,1]
-        self.label_count = len(self.labels)
+        #FIXME - read me from train_data, test_data
+        self.labels = [0,1] # C set [0,1]
+        self.label_count = 2
         
-        self.V = self.data.cp_str_2_int.values()  # V set [0,1,2....V-1] 
-        self.V_count = len(self.V)
-        
+        self.V = []
+        self.V_count = 0
         # Model parameters
         # lambda shape = matrix CxV
-        self.lmbda = np.zeros( self.label_count* self.V_count)            
-            
+        self.lmbda = np.zeros([])
+        
+        self.update_parameters()            
+        
+        self.train_iter_count = 0
+        self.best_f1_pos_results = {'iter': 0, 'auc' : 0., 'precision' : [0., 0.], 'recall' : [0., 0.], 'fscore' : [0., 0.]}
+        self.best_f1_results = {'iter': 0, 'auc' : 0., 'precision' : [0., 0.], 'recall' : [0., 0.], 'fscore' : [0., 0.]}
+        
+    def update_parameters(self):
+        self.cp_str_2_int = {}
+        self.cp_int_2_str = {}
+
+        # read train_docs from file
+        with open(self.train_file, "r") as ins:
+            for line in ins:
+                if len(line) < 1:
+                    continue
+                
+                origin_line_str = line
+                # for each document
+                doc = {}
+                [sentence, label_str] = line.strip('\n\t ').split(',')
+                sentence = sentence.strip('\t\n ')
+                label_id = int(label_str)
+                tokens = sentence.split()
+                for token_str in tokens:
+                    token_id = self.cp_str_2_int.get(token_str)
+                    if token_id == None: # not in context_predicate_map string - id
+                        token_id = len(self.cp_str_2_int)
+                        self.cp_str_2_int[token_str] = token_id
+                        self.cp_int_2_str[token_id] = token_str
+                        
+                    if token_id not in doc: # check if in doc or not
+                        doc[token_id] = 1
+                    else :
+                        doc[token_id] += 1
+                
+                aDoc = document(doc, label_id, origin_line_str)
+                self.train_docs.append(aDoc)
+        
+        # read test_docs from file
+        with open(self.test_file, "r") as ins:
+            for line in ins:
+                if len(line) < 1:
+                    continue
+                origin_line_str = line
+                # for each document
+                doc = {}
+                [sentence, label_str] = line.strip('\n\t ').split(',')
+                sentence = sentence.strip('\t\n ')
+                label_id = int(label_str)
+                tokens = sentence.split()
+                for token_str in tokens:
+                    token_id = self.cp_str_2_int.get(token_str)
+                    if token_id == None: # not in context_predicate_map string - id
+                        continue
+                    if token_id not in doc: # check if in doc or not
+                        doc[token_id] = 1
+                    else :
+                        doc[token_id] += 1
+                
+                aDoc = document(doc, label_id, origin_line_str)
+                self.test_docs.append(aDoc)
+                total_test_count = len(self.test_docs)
+
+        neg_count = 0
+        for doc in self.test_docs:
+            if doc.human_label == 0:
+                neg_count += 1
+        print '\t#doc tests: ', total_test_count, '\t# neg_docs: ', neg_count, '\t#pos_docs', total_test_count-neg_count        
+
+        
+        
+        self.V = self.cp_str_2_int.values()
+        self.V_count = len(self.V)
+        self.lmbda = np.zeros(self.label_count* self.V_count)            
+
     def change_domain(self, new_data):
         
         print 'Change to new train domain', new_data.train_domain
@@ -157,18 +242,6 @@ class model():
         '''
         e_x = np.exp(x - np.max(x))
         return e_x / e_x.sum()
-
-    # REMOVEME                            
-    def compute_contidional_prob(self, label_idx, doc, lmbda):
-        '''
-        compute P(c|d) = exp(sum_i lambda_i * f_i(c,d)) / sum_c exp(sum_i lambda_i * f_i(c,d))
-                                    i = (w,c) for w \in V, c \in C
-        '''
-        temp = np.zeros(self.label_count)
-        for label_ in self.labels:
-            temp[label_] = self.compute_sum_features(doc, label_, lmbda)
-        temp = self.softmax(temp)
-        return temp[label_idx]
     
     def compute_doc_feature(self, doc, word_id):
         '''
@@ -201,7 +274,7 @@ class model():
         log_li = 0.0
         grad = np.zeros(lmbda.shape)
 
-        for doc in self.data.train:
+        for doc in self.train_docs:
             ########### compute log_li #############
             doc_log_li = 0.0
             ep_1 = self.compute_sum_features(doc, doc.human_label, lmbda)
@@ -238,8 +311,8 @@ class model():
         Using fmin_l_bfgs_b to maxmimum log likelihood
         NOTE: fmin_l_bfgs_b returns 3 values
         '''
-        print "Training maxent with LBFGS algorithm. Change iprint = 99 to more logs..."
-        self.lmbda, log_li, dic = fmin_l_bfgs_b(self.compute_log_li_grad, self.lmbda, iprint = 0, callback = self.compute_test)
+        print "Training max_ent with LBFGS algorithm. Change iprint = 99 to more logs..."
+        self.lmbda, log_li, dic = fmin_l_bfgs_b(self.compute_log_li_grad, self.lmbda, iprint = 0, callback = self.test_while_train)
     
         if self.IS_LIFELONG == True:
             self.update_cue()
@@ -277,44 +350,53 @@ class model():
             if cue_str not in self.cue:
                 self.cue.append(cue_str)
                         
-    def inference_doc(self, doc):
+    def _inference_doc(self, doc, lmbda):
         '''
             return c_star = argmax_c P(c|d)
         '''
         temp = np.zeros(self.label_count)
         for label_ in self.labels:
-            temp[label_] = self.compute_sum_features(doc, label_, self.lmbda)
+            temp[label_] = self.compute_sum_features(doc, label_, lmbda)
         temp = self.softmax(temp)
         return np.argmax(temp)
 
-        
-    def inference(self):
-        for doc in self.data.test:
-            doc.model_label = self.inference_doc(doc)
+    def _inference(self, lmbda):
+        for doc in self.test_docs:
+            doc.model_label = self._inference_doc(doc, lmbda)
     
-    def validate(self):
-                
-        print 'Result in train domain : ', self.data.train_domain, '/ test domain: ', self.data.test_domain
-        total_test_count = len(self.data.test)
-        neg_count = 0
-        for doc in self.data.test:
-            if doc.human_label == 0:
-                neg_count += 1
-        print '#doc tests: ', total_test_count, '\t# neg_docs: ', neg_count, '\t#pos_docs', total_test_count-neg_count        
-        
-        model_labels = [doc.model_label for doc in self.data.test]
-        human_labels = [doc.human_label for doc in self.data.test]
+    def test(self, lmbda):
+        self._inference(lmbda)        
+        model_labels = [doc.model_label for doc in self.test_docs]
+        human_labels = [doc.human_label for doc in self.test_docs]
         
         prec, recall, _ = precision_recall_curve(human_labels, model_labels)
         auc_metric = auc(recall, prec)
-        print 'AUC: ', auc_metric
+        print '\tAUC: ', auc_metric
+        
         precision, recall, fscore, support = precision_recall_fscore_support(human_labels, model_labels)
+        print '\tPRECISION: {}'.format(precision), '\tmean', np.mean(precision)
+        print '\tRECALL: {}'.format(recall), '\tmean', np.mean(recall)
+        print '\tFSCORE: {}'.format(fscore), '\tmean', np.mean(fscore)
+        print '\tSUPPORT: {}'.format(support), '\n'
+        return {'auc': auc_metric, 'precision' : precision, 'recall' : recall, 'fscore' : fscore}
+    
+    def test_while_train(self, temp_lambda):
+        self.train_iter_count += 1
+        print 'Iteration ', self.train_iter_count
+        res = self.test(temp_lambda)
+        if res['fscore'][1] > self.best_f1_pos_results['fscore'][1]:
+            self.best_f1_pos_results = copy.deepcopy(res)
+            self.best_f1_pos_results['iter'] = self.train_iter_count
         
-        print 'PRECISION: {}'.format(precision), '\tmean', np.mean(precision)
-        print 'RECALL: {}'.format(recall), '\tmean', np.mean(recall)
-        print 'FSCORE: {}'.format(fscore), '\tmean', np.mean(fscore)
-        print 'SUPPORT: {}'.format(support), '\n'
-        
+        if np.mean(res['fscore']) > np.mean(self.best_f1_results['fscore']):
+            self.best_f1_results = copy.deepcopy(res)
+            self.best_f1_results['iter'] = self.train_iter_count
+    
+    def print_results(self):
+        print 'Results: train_file ', self.train_file, ' / test_file: ', self.test_file
+        print 'f1_pos_best', self.best_f1_pos_results
+        print 'f1_mean_best', self.best_f1_results
+    
     def save_model(self):
         print 'saving model...'
         
