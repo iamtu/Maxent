@@ -1,0 +1,6 @@
+a a b c d ,1
+a b a b,1
+a c b d,1
+d e g, 0
+d g g, 0
+e e d, 0
