@@ -17,15 +17,18 @@ class maxent_model():
         self.test_docs = dataset.test_docs
         self.cp_str_2_int = dataset.cp_str_2_int # self.cp_str_2_int['context_predicate_str'] = context_predicate_id in train data
         self.cp_int_2_str = dataset.cp_int_2_str
-        
-        self.labels = dataset.labels # C set [0,1]
-        self.label_count = dataset.label_count
+        self.label_str_2_idx = dataset.label_str_2_idx
+        self.label_idx_2_str = dataset.label_idx_2_str
+
+        self.labels = self.label_idx_2_str.keys()
+        self.label_count = len(self.labels)
         
         self.V = dataset.V
-        self.V_count = dataset.V_count
+        self.V_count = len(self.V)
+
         # Model parameters
         # lambda shape = matrix CxV
-        self.lmbda = np.zeros((2,self.V_count))
+        self.lmbda = np.zeros((self.label_count, self.V_count))
         self.train_iter_count = 0
     
     def run(self):
@@ -59,7 +62,7 @@ class maxent_model():
     def compute_log_li_grad(self, lmbda):        
         '''
         compute log_li and its gradient
-        log_li = sum_d (log P(c(d)|d) with c(d) is human label of document d
+        log_li = sum_d (log P(c(d)|d) - C*sum(lmbda**2)  //with c(d) is human label of document d, C*sum(lmbda**2) is the regulation term 
         grad_i = grad(lambda_i) = sum_d ( f_i(c(d),d) + (sum_c f_i(c,d)*exp(sum_i lambda_i * f_i(c,d))) / (sum_c exp(sum_i lambda_i * f_i(c,d))) )
         NOTE: 
             *) log_li is computed directly follow the above formular
@@ -121,14 +124,18 @@ class maxent_model():
             return c_star = argmax_c P(c|d)
         '''
         temp = self._score_doc(doc, lmbda)
-        return np.argmax(temp)
+        label_idx = np.argmax(temp)
+        return self.label_idx_2_str[label_idx]
     
     def _score_doc(self, doc, lmbda):
         temp = np.zeros(self.label_count)
         for label_ in self.labels:
             temp[label_] = self.compute_sum_features(doc, label_, lmbda)
         temp = self.softmax(temp)
-        return (temp)
+        result = {}
+        for i in range(len(temp)):
+            result[self.label_idx_2_str[i]] = temp[i]
+        return result
 
 
     def _inference(self, lmbda):
@@ -137,8 +144,8 @@ class maxent_model():
     
     def _test(self, lmbda):
         self._inference(lmbda)        
-        model_labels = [doc.model_label for doc in self.test_docs]
-        human_labels = [doc.human_label for doc in self.test_docs]
+        model_labels = [int(doc.model_label) for doc in self.test_docs]
+        human_labels = [int(doc.human_label) for doc in self.test_docs]
         
         (pre_1, rec_1, f1_1),(pre_0, rec_0, f1_0) = compute_precision_recall(human_labels, model_labels)
         '''

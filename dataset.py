@@ -1,5 +1,6 @@
-from document import document
 import numpy as np
+from document import document
+from utils import pre_process_doc
 
 class dataset():
     def __init__(self, train_file, test_file):
@@ -8,14 +9,8 @@ class dataset():
         self.test_docs = []
         self.cp_str_2_int = {} # self.cp_str_2_int['context_predicate_str'] = context_predicate_id in train data
         self.cp_int_2_str = {}
-        
-        self.labels = [0,1] # C set [0,1]
-        self.label_count = 2
-        
-        self.V = []
-        self.V_count = 0
-        
-        self.V_labels = []
+        self.label_idx_2_str = {}
+        self.label_str_2_idx = {}
 
         # read train_docs from file
         print '\t *** train file:', train_file
@@ -26,12 +21,12 @@ class dataset():
                 origin_line_str = line
                 # for each document
                 doc = {}
-                [sentence, label_str] = line.strip('\n\t ').split(',')
-                sentence = sentence.strip('\t\n ')
-                label_id = int(label_str)
-                if label_id not in self.V_labels:
-                    self.V_labels.append(label_id)
-
+                [sentence, label_str] = pre_process_doc(line)
+                label_id = self.label_str_2_idx.get(label_str)
+                if label_id == None:
+                    label_id = len(self.label_str_2_idx)
+                    self.label_str_2_idx[label_str] = label_id
+                    self.label_idx_2_str[label_id] = label_str
 
                 tokens = sentence.split()
                 for token_str in tokens:
@@ -58,12 +53,11 @@ class dataset():
                 origin_line_str = line
                 # for each document
                 doc = {}
-                [sentence, label_str] = line.strip('\n\t ').split(',')
-                sentence = sentence.strip('\t\n ')
-                label_id = int(label_str)
-                if label_id not in self.V_labels:
-                    self.V_labels.append(label_id)
-
+                [sentence, label_str] = pre_process_doc(line)
+                label_id = self.label_str_2_idx.get(label_str)
+                if label_id == None:
+                    print 'Warning: sentence:', sentence, 'with label', label_str , ' not found in training dataset'
+                    continue 
                 tokens = sentence.split()
                 for token_str in tokens:
                     token_id = self.cp_str_2_int.get(token_str)
@@ -77,25 +71,34 @@ class dataset():
                 aDoc = document(doc, label_id, origin_line_str)
                 self.test_docs.append(aDoc)
                 
-        total_test_count = len(self.test_docs)
-        neg_count = 0
-        for doc in self.test_docs:
-            if doc.human_label == 0:
-                neg_count += 1
-        print '\t#doc tests: ', total_test_count, '\t# neg_docs: ', neg_count, '\t#pos_docs', total_test_count-neg_count        
-
 
         self.V = self.cp_int_2_str.keys()
         self.V_count = len(self.V)
 
-        print self.V_count
-        print self.V_labels
-    
     def info(self):
-        print 'V', self.V
-        print 'train_docs', [doc.origin_str for doc in self.train_docs]
-        print 'test_docs', [doc.origin_str for doc in self.test_docs]
-
+        print 'Dataset information:'
+        print 'Dictionary size:', self.V_count
+        print 'Training dataset:'
+        count = {}
+        for doc in self.train_docs:
+            if doc.human_label not in count.keys():
+                count[doc.human_label] = 1
+            else:
+                count[doc.human_label] += 1
+        print 'class\t#docs'
+        for label_idx in count.keys():
+            print self.cp_int_2_str[label_idx], '\t', count[label_idx]
+        
+        print 'Test dataset:'
+        count = {}
+        for doc in self.test_docs:
+            if doc.human_label not in count.keys():
+                count[doc.human_label] = 1
+            else:
+                count[doc.human_label] += 1
+        print 'class\t#docs'
+        for label_idx in count.keys():
+            print self.cp_int_2_str[label_idx], '\t', count[label_idx]
 
 
     def convert_2_numpy(self):

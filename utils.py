@@ -1,3 +1,15 @@
+def pre_process_doc(line):
+    '''
+    #TODO: more complicated preprocess here
+    such as: remove punctuation, generate n_gram ...
+    '''
+    line = line.strip()
+    [sentence, label_str] = line.split(',')
+    label_id = int(label_str)
+    sentence = sentence.strip('\t\n ')
+    return [sentence, str(label_id)]
+
+
 def compute_precision_recall(human_labels, model_labels):
 
     TP = FP = TN = FN = 0
